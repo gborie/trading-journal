@@ -1,5 +1,6 @@
 import os
 import csv
+from datetime import datetime
 from flask import Flask, flash, render_template, request, session, redirect, jsonify, url_for
 from flask_session import Session
 import pandas as pd
@@ -135,48 +136,38 @@ def stats():
         return redirect("/login")
 
     if request.method == "POST":
+        # read excel file
+        df = pd.read_excel('esi_nace2.xlsx',sheet_name='ESI MONTHLY')
+        # add index names and reset index to only keep Dates
+        df.index.names = ['Dates', 'Num']
+        index = df.index.levels[0].unique()
+        df.reset_index(inplace=True)
+        df['Dates'] = pd.to_datetime(index)
+        df.set_index('Dates',inplace=True)
+        # clean df by dropping empty columns
+        df.drop('Num', axis=1, inplace=True)
+        df = df.dropna(axis=1,how='all')
 
-        keyword = request.form.get("keyword")
-        pd.read_excel('Excel_Sample.xlsx',sheet_name='Sheet1')
-
-        if not keyword:
-            keyword = str(trade.date)
-
-        # Make sure data requested exists
-        trades = Trade.query.order_by(Trade.id.asc()).filter(and_(Trade.user_id == session["id"],
-        Trade.date_time_open >= keyword.upper())).all()
-        if not trades:
-            return render_template("error.html", message="No such data.")
-        else:
-            labels = []
-            for trade in trades:
-                labels.append(trade.date)
-            values = []
-            calc = 0
-            for trade in trades:
-                calc += (trade.pnl-trade.commission)
-                values.append(round(calc, 2))
-
-            return render_template("charts.html", values=values, labels=labels, keyword=keyword)
+        return render_template("stats.html", df=df.to_html, name="GB")
 
     else:
-        trade = Trade.query.get(838)
-        keyword = str(trade.date)
+        # read excel file
+        df = pd.read_excel('esi_nace2.xlsx',sheet_name='ESI MONTHLY')
+        # add index names and reset index to only keep Dates
+        df.index.names = ['Dates', 'Num']
+        index = df.index.levels[0].unique()
+        df.reset_index(inplace=True)
+        df['Dates'] = pd.to_datetime(index)
+        df.set_index('Dates',inplace=True)
+        # clean df by dropping empty columns
+        df.drop('Num', axis=1, inplace=True)
+        df = df.dropna(axis=1,how='all')
 
-        trades = Trade.query.order_by(Trade.id.asc()).filter(and_(Trade.user_id == session["id"],
-                 Trade.date_time_open >= keyword.upper())).all()
-        if not trades:
-            return render_template("error.html", message="No such data.")
-        else:
-            labels = []
-            for trade in trades:
-                labels.append(trade.date)
-            values = []
-            calc = 0
-            for trade in trades:
-                calc += (trade.pnl-trade.commission)
-                values.append(round(calc, 2))
-            return render_template("charts.html", values=values, labels=labels, keyword=keyword)
+        eu_indu = df['EU.INDU']
+        print(df)
+        print(eu_indu)
+        
+        return render_template("stats.html", df=df.to_html, name="GB", eu_indu=eu_indu)
 
 
 @app.route("/charts", methods=["GET", "POST"])
